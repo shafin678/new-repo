@@ -1,0 +1,116 @@
+<!-- saved from url=(0065)http://math.hws.edu/graphicsbook/source/webgl/simple-texture.html -->
+<!-- modified by Mohammad Imrul Jubair -->
+<html>
+<title>LAB-1: Intro</title>
+<canvas id="webglcanvas" width="500" height="500"></canvas>
+<script>
+
+    var canvas = document.getElementById("webglcanvas");
+    var gl = canvas.getContext("webgl");
+
+    var vertexShaderSource =
+       `attribute vec3 a_coords;
+        void main() {
+            gl_Position = vec4(a_coords, 1.0);
+        }`;
+
+    var fragmentShaderSource =
+       `void main() {
+            gl_FragColor = vec4(0.3, 0.7, 0.3, 1.0);
+        }`;
+
+    var vsh = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vsh, vertexShaderSource);
+    gl.compileShader(vsh);
+
+    var fsh = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fsh, fragmentShaderSource);
+    gl.compileShader(fsh);
+
+    var prog = gl.createProgram();
+
+    gl.attachShader(prog, vsh);
+    gl.attachShader(prog, fsh);
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+
+    var a_coords_location = gl.getAttribLocation(prog, "a_coords");
+
+    // Stylized pine tree: each group of 3 values is one triangle (x, y, z).
+    // Top tier (1 triangle), middle tier (2), bottom tier (2), trunk (2), side supports (2 each).
+    var coords = new Float32Array([
+        // Top tier
+         0.0,  0.92, 0.0,
+        -0.38, 0.42, 0.0,
+         0.38, 0.42, 0.0,
+
+        // Middle tier - left piece
+        -0.50, 0.38, 0.0,
+        -0.06, 0.30, 0.0,
+        -0.62, 0.02, 0.0,
+        -0.06, 0.30, 0.0,
+        -0.62, 0.02, 0.0,
+         0.0,  0.08, 0.0,
+
+        // Middle tier - right piece
+         0.50, 0.38, 0.0,
+         0.06, 0.30, 0.0,
+         0.62, 0.02, 0.0,
+         0.06, 0.30, 0.0,
+         0.62, 0.02, 0.0,
+         0.0,  0.08, 0.0,
+
+        // Bottom tier - left piece
+        -0.70, 0.0, 0.0,
+        -0.10, -0.08, 0.0,
+        -0.80, -0.30, 0.0,
+        -0.10, -0.08, 0.0,
+        -0.80, -0.30, 0.0,
+         0.0, -0.20, 0.0,
+
+        // Bottom tier - right piece
+         0.70, 0.0, 0.0,
+         0.10, -0.08, 0.0,
+         0.80, -0.30, 0.0,
+         0.10, -0.08, 0.0,
+         0.80, -0.30, 0.0,
+         0.0, -0.20, 0.0,
+
+        // Trunk
+        -0.09, -0.30, 0.0,
+        -0.15, -0.88, 0.0,
+         0.09, -0.30, 0.0,
+         0.09, -0.30, 0.0,
+        -0.15, -0.88, 0.0,
+         0.15, -0.88, 0.0,
+
+        // Left side support
+        -0.80, -0.30, 0.0,
+        -0.80, -0.36, 0.0,
+        -0.15, -0.88, 0.0,
+        -0.80, -0.30, 0.0,
+        -0.15, -0.88, 0.0,
+        -0.09, -0.30, 0.0,
+
+        // Right side support
+         0.80, -0.30, 0.0,
+         0.80, -0.36, 0.0,
+         0.15, -0.88, 0.0,
+         0.80, -0.30, 0.0,
+         0.15, -0.88, 0.0,
+         0.09, -0.30, 0.0
+    ]);
+
+    var a_coords_buffer = gl.createBuffer();
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(a_coords_location, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(a_coords_location);
+
+    gl.clearColor(0.6, 0.8, 1.0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 45);
+
+</script>
+</html>
