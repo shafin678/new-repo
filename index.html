@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="An interactive, beginner-friendly visual guide to consistent hashing."
+    />
+    <title>Hash Ring Lab — Learn Consistent Hashing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#learn" aria-label="Hash Ring Lab home">
+        <span class="brand-mark" aria-hidden="true">◎</span>
+        <span>Hash Ring Lab</span>
+      </a>
+      <div class="progress-shell" aria-label="Course progress">
+        <div class="progress-label">
+          <span id="progressText">1 of 6</span>
+          <span id="progressPercent">17%</span>
+        </div>
+        <div class="progress-track"><span id="progressBar"></span></div>
+      </div>
+      <button class="quiet-button" id="resetCourse">Start over</button>
+    </header>
+
+    <main>
+      <section class="hero" id="learn">
+        <div class="eyebrow"><span></span> Visual system design · beginner path</div>
+        <h1>Make millions of keys<br />find the <em>right server.</em></h1>
+        <p>
+          Learn consistent hashing by moving through six small ideas. No formulas
+          required—touch the controls, predict what happens, then see it.
+        </p>
+        <div class="hero-actions">
+          <button class="primary-button" data-go-step="0">
+            Begin the lesson <span aria-hidden="true">→</span>
+          </button>
+          <span class="time-note">About 10 minutes · interactive</span>
+        </div>
+      </section>
+
+      <section class="lesson-layout" aria-label="Interactive lesson">
+        <nav class="lesson-nav" aria-label="Lesson chapters">
+          <p class="nav-kicker">Your path</p>
+          <button class="chapter active" data-step="0">
+            <span class="chapter-number">01</span>
+            <span><strong>The problem</strong><small>Why simple hashing breaks</small></span>
+          </button>
+          <button class="chapter" data-step="1">
+            <span class="chapter-number">02</span>
+            <span><strong>Bend the line</strong><small>Meet the hash ring</small></span>
+          </button>
+          <button class="chapter" data-step="2">
+            <span class="chapter-number">03</span>
+            <span><strong>Place the data</strong><small>Walk clockwise</small></span>
+          </button>
+          <button class="chapter" data-step="3">
+            <span class="chapter-number">04</span>
+            <span><strong>Change the cluster</strong><small>Move only neighbors</small></span>
+          </button>
+          <button class="chapter" data-step="4">
+            <span class="chapter-number">05</span>
+            <span><strong>Balance the ring</strong><small>Virtual nodes</small></span>
+          </button>
+          <button class="chapter" data-step="5">
+            <span class="chapter-number">06</span>
+            <span><strong>Make it resilient</strong><small>Replication & trade-offs</small></span>
+          </button>
+        </nav>
+
+        <div class="lesson-stage">
+          <article class="lesson-panel active" data-panel="0">
+            <div class="lesson-copy">
+              <div class="lesson-meta">Chapter 01 <span>·</span> The problem</div>
+              <h2>First, imagine a coat-check desk.</h2>
+              <p class="lead">
+                Each coat is a piece of data. Each rack is a server. We need one
+                repeatable rule that tells us where every coat belongs.
+              </p>
+              <div class="analogy-card">
+                <div class="analogy-icon">#</div>
+                <div>
+                  <strong>A hash function is a label maker.</strong>
+                  <p>
+                    Give it a key like <code>"photo.jpg"</code> and it always prints
+                    the same large number. We use that number to pick a server.
+                  </p>
+                </div>
+              </div>
+              <p>
+                The obvious rule is <code>hash(key) % number_of_servers</code>. It is
+                fast, but the divisor changes whenever a server arrives or leaves.
+              </p>
+            </div>
+            <div class="demo-card modulo-demo">
+              <div class="demo-heading">
+                <div>
+                  <span class="demo-label">Try it</span>
+                  <h3>Remove one server</h3>
+                </div>
+                <button class="small-button" id="toggleModulo">Remove server D</button>
+              </div>
+              <div id="moduloGrid" class="key-grid" aria-live="polite"></div>
+              <div class="impact-row">
+                <span>Keys that must move</span>
+                <strong id="moduloImpact">0 of 12</strong>
+              </div>
+              <p class="demo-hint" id="moduloHint">
+                All four servers are online. Notice each key's home.
+              </p>
+            </div>
+          </article>
+
+          <article class="lesson-panel" data-panel="1">
+            <div class="lesson-copy">
+              <div class="lesson-meta">Chapter 02 <span>·</span> The core idea</div>
+              <h2>Bend the number line into a ring.</h2>
+              <p class="lead">
+                A hash can land anywhere from 0 up to a huge maximum. Join the two
+                ends and the range becomes a circle—like a clock.
+              </p>
+              <ol class="plain-steps">
+                <li><span>1</span> Hash every server name onto the ring.</li>
+                <li><span>2</span> Hash every data key onto the same ring.</li>
+                <li><span>3</span> From a key, walk clockwise to the first server.</li>
+              </ol>
+              <div class="definition">
+                <span class="definition-tag">The promise</span>
+                <p>
+                  When servers change, most keys keep the same destination. Only a
+                  small neighboring slice of the ring is remapped.
+                </p>
+              </div>
+            </div>
+            <div class="demo-card ring-intro">
+              <div class="demo-heading">
+                <div>
+                  <span class="demo-label">Build the mental model</span>
+                  <h3>A number line with no end</h3>
+                </div>
+              </div>
+              <div class="line-to-ring">
+                <div class="number-line">
+                  <span>0</span><i></i><i></i><i></i><span>255</span>
+                </div>
+                <div class="curve-arrow">↳ wrap the ends ↲</div>
+                <div class="mini-ring" aria-label="Circular hash space">
+                  <span class="ring-zero">0</span>
+                  <span class="ring-quarter">64</span>
+                  <span class="ring-half">128</span>
+                  <span class="ring-three-quarter">192</span>
+                </div>
+              </div>
+              <p class="demo-hint">
+                Real hashes use enormous ranges. We use 0–255 so every position is
+                easy to see.
+              </p>
+            </div>
+          </article>
+
+          <article class="lesson-panel" data-panel="2">
+            <div class="lesson-copy">
+              <div class="lesson-meta">Chapter 03 <span>·</span> Routing a key</div>
+              <h2>Clockwise finds the owner.</h2>
+              <p class="lead">
+                A key does not choose the nearest server. It chooses the
+                <strong>first server clockwise</strong>. At the end, the search wraps
+                back to zero.
+              </p>
+              <div class="walk-example">
+                <span class="dot key-dot"></span>
+                <code>key: "owl"</code>
+                <span class="walk-arrow">clockwise →</span>
+                <span class="dot server-dot"></span>
+                <code>server B</code>
+              </div>
+              <p>
+                This creates ownership arcs. A server owns all keys after the
+                previous server and up to its own position.
+              </p>
+            </div>
+            <div class="demo-card live-ring-card">
+              <div class="demo-heading">
+                <div>
+                  <span class="demo-label">Live ring</span>
+                  <h3>Route a key</h3>
+                </div>
+                <span class="status-pill"><i></i> deterministic</span>
+              </div>
+              <div class="ring-wrap">
+                <svg id="routeRing" class="hash-ring" viewBox="0 0 440 440" role="img"
+                  aria-label="Interactive consistent hash ring"></svg>
+                <div class="ring-center">
+                  <span>HASH SPACE</span>
+                  <strong>0–255</strong>
+                  <small id="routeResult">Choose a key</small>
+                </div>
+              </div>
+              <div class="key-buttons" id="routeKeys" aria-label="Choose a key"></div>
+            </div>
+          </article>
+
+          <article class="lesson-panel" data-panel="3">
+            <div class="lesson-copy">
+              <div class="lesson-meta">Chapter 04 <span>·</span> Minimal movement</div>
+              <h2>Now change the cluster.</h2>
+              <p class="lead">
+                This is the “consistent” part: adding or removing a server changes
+                only the keys in one nearby arc—not almost every key.
+              </p>
+              <div class="compare-stat">
+                <div><span>Modulo hashing</span><strong>~75%</strong><small>may move*</small></div>
+                <div class="better"><span>Consistent hashing</span><strong>~25%</strong><small>may move*</small></div>
+              </div>
+              <p class="footnote">*Illustrative values for changing 4 servers to 3.</p>
+              <div class="callout">
+                <strong>Why it matters:</strong> fewer cache misses, less network
+                traffic, and faster recovery while a cluster changes.
+              </div>
+            </div>
+            <div class="demo-card live-ring-card">
+              <div class="demo-heading">
+                <div>
+                  <span class="demo-label">Cluster experiment</span>
+                  <h3>Add and remove a server</h3>
+                </div>
+                <button class="small-button accent" id="toggleServer">+ Add server D</button>
+              </div>
+              <div class="ring-wrap">
+                <svg id="changeRing" class="hash-ring" viewBox="0 0 440 440" role="img"
+                  aria-label="Hash ring showing moved keys"></svg>
+                <div class="ring-center">
+                  <span>KEYS MOVED</span>
+                  <strong id="movedCount">0 / 10</strong>
+                  <small id="moveSummary">Before the change</small>
+                </div>
+              </div>
+              <div class="legend">
+                <span><i class="legend-key"></i> stayed</span>
+                <span><i class="legend-key moved"></i> moved</span>
+                <span><i class="legend-node"></i> server</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="lesson-panel" data-panel="4">
+            <div class="lesson-copy">
+              <div class="lesson-meta">Chapter 05 <span>·</span> Virtual nodes</div>
+              <h2>One server, many seats.</h2>
+              <p class="lead">
+                A few randomly placed servers can leave one server owning a giant
+                arc. Virtual nodes—or <strong>vnodes</strong>—give each physical
+                server several positions around the ring.
+              </p>
+              <div class="analogy-card">
+                <div class="analogy-icon">✦</div>
+                <div>
+                  <strong>Think raffle tickets.</strong>
+                  <p>
+                    One ticket each can produce a lopsided result. Many tickets
+                    spread around the bowl make each person's share more even.
+                  </p>
+                </div>
+              </div>
+              <ul class="check-list">
+                <li>Better balance across servers</li>
+                <li>Easier capacity weighting</li>
+                <li>Smoother server additions and removals</li>
+              </ul>
+            </div>
+            <div class="demo-card balance-card">
+              <div class="demo-heading">
+                <div>
+                  <span class="demo-label">Compare distribution</span>
+                  <h3>Virtual nodes smooth the load</h3>
+                </div>
+                <div class="segment-control" role="group" aria-label="VNode count">
+                  <button class="active" data-vnodes="1">1 seat</button>
+                  <button data-vnodes="32">32 seats</button>
+                </div>
+              </div>
+              <div class="balance-bars" id="balanceBars"></div>
+              <div class="balance-footer">
+                <span>100 sample keys</span>
+                <strong id="balanceVerdict">Uneven distribution</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="lesson-panel" data-panel="5">
+            <div class="lesson-copy">
+              <div class="lesson-meta">Chapter 06 <span>·</span> Production thinking</div>
+              <h2>Ownership is not a backup.</h2>
+              <p class="lead">
+                A ring tells us the primary owner. For resilience, store copies on
+                the next servers clockwise too. A replication factor of 3 means
+                three distinct physical servers hold each key.
+              </p>
+              <div class="tradeoff-grid">
+                <div><span>✓</span><strong>Great for</strong><p>Distributed caches, databases, object stores, sharding.</p></div>
+                <div><span>!</span><strong>Watch out for</strong><p>Hot keys, node health, replication, and changing membership.</p></div>
+              </div>
+              <div class="definition">
+                <span class="definition-tag">Remember</span>
+                <p>
+                  Consistent hashing minimizes remapping. It does not automatically
+                  make data balanced, replicated, or strongly consistent.
+                </p>
+              </div>
+            </div>
+            <div class="demo-card quiz-card">
+              <div class="demo-heading">
+                <div>
+                  <span class="demo-label">Check your understanding</span>
+                  <h3>Three quick questions</h3>
+                </div>
+                <span id="quizScore" class="quiz-score">0 / 3</span>
+              </div>
+              <div id="quizArea"></div>
+              <button class="primary-button full-width" id="nextQuiz">Check answer</button>
+              <div class="completion-card" id="completionCard">
+                <span class="completion-mark">✓</span>
+                <h3>You can read the ring.</h3>
+                <p>
+                  You now know the problem, the clockwise rule, minimal movement,
+                  virtual nodes, and replication.
+                </p>
+                <button class="small-button" id="replayQuiz">Try the quiz again</button>
+              </div>
+            </div>
+          </article>
+
+          <div class="stage-footer">
+            <button class="text-button" id="prevStep">← Previous</button>
+            <div class="step-dots" id="stepDots" aria-label="Lesson progress"></div>
+            <button class="primary-button compact" id="nextStep">Next chapter →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="cheatsheet">
+        <div>
+          <span class="demo-label">Pocket summary</span>
+          <h2>The whole idea in five lines.</h2>
+        </div>
+        <ol>
+          <li><span>01</span>Hash servers and keys into one circular number space.</li>
+          <li><span>02</span>A key belongs to the first server clockwise.</li>
+          <li><span>03</span>Adding a server steals only its neighboring arc.</li>
+          <li><span>04</span>Virtual nodes make ownership more even.</li>
+          <li><span>05</span>Replication stores copies on more clockwise servers.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer>
+      <span class="brand"><span class="brand-mark">◎</span> Hash Ring Lab</span>
+      <p>Built to make one hard idea feel obvious.</p>
+      <a href="#learn">Back to top ↑</a>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
