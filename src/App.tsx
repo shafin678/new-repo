@@ -73,6 +73,16 @@ function hashString(value: string) {
   return hash
 }
 
+function ringHash(value: string) {
+  let hash = hashString(value)
+  hash ^= hash >>> 16
+  hash = Math.imul(hash, 0x85ebca6b) >>> 0
+  hash ^= hash >>> 13
+  hash = Math.imul(hash, 0xc2b2ae35) >>> 0
+  hash ^= hash >>> 16
+  return hash >>> 0
+}
+
 function findOwner(keyValue: number, nodes: RingNode[]) {
   const sorted = [...nodes].sort((a, b) => a.value - b.value)
   return sorted.find((node) => node.value >= keyValue) ?? sorted[0]
@@ -134,18 +144,25 @@ function NextLesson({ index, label }: { index: number; label: string }) {
 
 function ModuloDemo() {
   const [failed, setFailed] = useState(false)
+  const originalPool = [0, 1, 2, 3]
+  const reducedPool = [0, 2, 3]
+  const activePool = failed ? reducedPool : originalPool
   const keys = Array.from({ length: 8 }, (_, index) => {
     const name = `key${index}`
     const hash = hashString(name)
+    const beforeIndex = hash % originalPool.length
+    const afterIndex = hash % reducedPool.length
     return {
       name,
       hash,
-      before: hash % 4,
-      after: hash % 3,
+      beforeIndex,
+      afterIndex,
+      beforeOwner: originalPool[beforeIndex],
+      afterOwner: reducedPool[afterIndex],
     }
   })
-  const moved = keys.filter((key) => key.before !== key.after).length
-  const serverCount = failed ? 3 : 4
+  const moved = keys.filter((key) => key.beforeOwner !== key.afterOwner).length
+  const serverCount = activePool.length
 
   return (
     <div className="demo-card modulo-demo">
@@ -167,7 +184,7 @@ function ModuloDemo() {
       </div>
 
       <div className="server-columns" style={{ '--columns': serverCount } as React.CSSProperties}>
-        {Array.from({ length: serverCount }, (_, server) => (
+        {activePool.map((server, poolIndex) => (
           <div className="server-column" key={server}>
             <div className="server-head">
               <Server size={16} />
@@ -175,14 +192,14 @@ function ModuloDemo() {
             </div>
             <div className="key-stack">
               {keys
-                .filter((key) => (failed ? key.after : key.before) === server)
+                .filter((key) => (failed ? key.afterIndex : key.beforeIndex) === poolIndex)
                 .map((key) => {
-                  const hasMoved = failed && key.before !== key.after
+                  const hasMoved = failed && key.beforeOwner !== key.afterOwner
                   return (
                     <div className={`key-chip ${hasMoved ? 'moved' : ''}`} key={key.name}>
                       <span>{key.name}</span>
                       {hasMoved && <ArrowRight size={12} />}
-                      {hasMoved && <small>was S{key.before}</small>}
+                      {hasMoved && <small>was S{key.beforeOwner}</small>}
                     </div>
                   )
                 })}
@@ -515,7 +532,7 @@ function VirtualNodeDemo() {
       Array.from({ length: 180 }, (_, index) => ({
         id: `item-${index}`,
         label: '',
-        value: hashString(`customer-record-${index}`) % 360,
+        value: ringHash(`customer-record-${index}`) % 360,
       })),
     [],
   )
@@ -526,7 +543,7 @@ function VirtualNodeDemo() {
           id: `${server}-${replica}`,
           label: '',
           realId: server,
-          value: hashString(`${server}:virtual-node:${replica}`) % 360,
+          value: ringHash(`${server}:virtual-node:${replica}`) % 360,
           color: COLORS[serverIndex],
         })),
       ),
@@ -573,7 +590,10 @@ function VirtualNodeDemo() {
             </div>
             <Gauge size={28} />
           </div>
-          <p>Standard deviation from the ideal average of {mean} keys per server.</p>
+          <p>
+            Standard deviation from the ideal average of {mean} keys per server. Individual steps can wiggle; the
+            overall trend improves as samples increase.
+          </p>
           <div className="bar-chart">
             {serverNames.map((server, index) => (
               <div className="bar-row" key={server}>
