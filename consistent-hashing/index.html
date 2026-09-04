@@ -143,7 +143,7 @@
 
     <div class="ringgrid">
       <div>
-        <svg id="ring" viewBox="-30 -30 500 500" aria-label="hash ring"></svg>
+        <svg id="ring" viewBox="-45 -45 530 530" aria-label="hash ring"></svg>
         <p class="note" id="ringHint">Click any key to watch it walk clockwise to its server.</p>
       </div>
       <div>
@@ -421,10 +421,24 @@ function drawRing() {
   // clickable too -- a 6px dot is a cruel target for a mouse.
   const names = keyNames();
   const showKeyLabels = names.length <= 12;
+
+  // Two keys can land almost on top of each other, and then their labels
+  // overprint into gibberish. Walk the keys in ring order and push each label
+  // further out whenever it crowds the one before it.
+  const labelRadius = new Map();
+  let previousAngle = -Infinity, tier = 0;
+  for (const { key, angle } of names
+      .map(key => ({ key, angle: (hash32(key) / SPACE) * 360 }))
+      .sort((a, b) => a.angle - b.angle)) {
+    tier = angle - previousAngle < 11 ? tier + 1 : 0;
+    labelRadius.set(key, R + 42 + tier * 17);
+    previousAngle = angle;
+  }
+
   for (const key of names) {
     const pos = hash32(key);
     const [x, y] = pointAt(pos, R + 20);
-    const [lx, ly] = pointAt(pos, R + 42);
+    const [lx, ly] = pointAt(pos, labelRadius.get(key));
     const isSel = key === selectedKey;
     const label = showKeyLabels
       ? `<text class="keylabel" x="${lx}" y="${ly + 3}" text-anchor="middle">${key}</text>`
