@@ -416,22 +416,27 @@ function drawRing() {
     }
   }
 
-  // Keys, sitting just outside the ring.
+  // Keys, sitting just outside the ring. Each one is wrapped in a group with a
+  // generous invisible hit circle, so the label and the surrounding space are
+  // clickable too -- a 6px dot is a cruel target for a mouse.
   const names = keyNames();
   const showKeyLabels = names.length <= 12;
   for (const key of names) {
     const pos = hash32(key);
     const [x, y] = pointAt(pos, R + 20);
+    const [lx, ly] = pointAt(pos, R + 42);
     const isSel = key === selectedKey;
-    parts.push(`<circle class="keydot" data-key="${key}" cx="${x}" cy="${y}"
-      r="${isSel ? 8 : (showKeyLabels ? 6 : 3.2)}"
-      fill="${isSel ? "#fff" : "#0e1117"}" stroke="#e6edf3" stroke-width="1.8"
-      style="cursor:pointer"/>`);
-    if (showKeyLabels) {
-      const [lx, ly] = pointAt(pos, R + 42);
-      parts.push(`<text class="keylabel" x="${lx}" y="${ly + 3}" text-anchor="middle"
-        style="pointer-events:none">${key}</text>`);
-    }
+    const label = showKeyLabels
+      ? `<text class="keylabel" x="${lx}" y="${ly + 3}" text-anchor="middle">${key}</text>`
+      : "";
+    const hitR = showKeyLabels ? 22 : 6;
+    const [hx, hy] = showKeyLabels ? [(x + lx) / 2, (y + ly) / 2] : [x, y];
+    parts.push(`<g class="keydot" data-key="${key}" style="cursor:pointer">
+      <circle cx="${hx}" cy="${hy}" r="${hitR}" fill="transparent"/>
+      <circle cx="${x}" cy="${y}" r="${isSel ? 8 : (showKeyLabels ? 6 : 3.2)}"
+        fill="${isSel ? "#fff" : "#0e1117"}" stroke="#e6edf3" stroke-width="1.8"/>
+      ${label}
+    </g>`);
   }
 
   // The clockwise walk for the selected key.
@@ -479,11 +484,18 @@ function drawLoads(ring) {
     </tr>`).join("");
 
   const spread = spreadFor(servers, vnodes);
+  const typical = typicalSpread(servers.length, vnodes);
   document.getElementById("spreadLine").innerHTML =
-    `Fair share would be <b>${(100 / servers.length).toFixed(1)}%</b> each.
-     Spread (standard deviation as a share of the mean): <b class="${
-       spread < 0.15 ? "good" : "bad"}">${(spread * 100).toFixed(1)}%</b> &mdash;
-     smaller is fairer.`;
+    `Fair share would be <b>${(100 / servers.length).toFixed(1)}%</b> each. Spread
+     (standard deviation as a share of the mean, smaller is fairer) &mdash;
+     <b class="${spread < 0.15 ? "good" : "bad"}">this cluster: ${(spread * 100).toFixed(1)}%</b>,
+     typical for ${vnodes} virtual node${vnodes === 1 ? "" : "s"}:
+     <b>${(typical * 100).toFixed(1)}%</b>.
+     ${vnodes === 1
+       ? `<br>These four names happen to land tidily, which is luck, not skill &mdash;
+          look how bad the typical case is.`
+       : `<br>Drag the slider and watch the typical figure fall. Virtual nodes do not
+          improve a lucky layout; they make a good layout <b>reliable</b>.`}`;
 }
 
 function drawStrip(ring) {
@@ -526,6 +538,7 @@ function applyChange(mutate, what) {
   for (const key of keyNames()) after.set(key, ringAfter.serverFor(key));
   reportMoved(before, after, what);
   drawToggles();
+  drawVnodeChart();          // the typical spread depends on the cluster size
 }
 
 function drawToggles() {
@@ -550,7 +563,6 @@ document.getElementById("vnodes").oninput = event => {
   vnodes = +event.target.value;
   document.getElementById("vnodesVal").textContent = vnodes;
   drawRing();
-  drawVnodeChart();
 };
 document.getElementById("keycount").oninput = event => {
   keyCount = +event.target.value;
@@ -573,16 +585,21 @@ function spreadFor(servers, vnodeCount) {
   return Math.sqrt(variance) / mean;
 }
 
+// What a cluster of this size would usually look like, rather than what this one
+// particular set of names happens to give.
+function typicalSpread(size, vnodeCount) {
+  let total = 0;
+  for (let trial = 0; trial < TRIALS; trial++) {
+    const servers = Array.from({ length: size }, (_, i) => `box-${trial}-${i}`);
+    total += spreadFor(servers, vnodeCount);
+  }
+  return total / TRIALS;
+}
+
 function drawVnodeChart() {
   const size = liveServers().length;
-  const rows = [1, 2, 5, 10, 25, 50, 100, 200].map(count => {
-    let total = 0;
-    for (let trial = 0; trial < TRIALS; trial++) {
-      const servers = Array.from({ length: size }, (_, i) => `box-${trial}-${i}`);
-      total += spreadFor(servers, count);
-    }
-    return { count, spread: total / TRIALS };
-  });
+  const rows = [1, 2, 5, 10, 25, 50, 100, 200]
+    .map(count => ({ count, spread: typicalSpread(size, count) }));
   const worst = Math.max(...rows.map(r => r.spread));
   document.getElementById("vnodeChart").innerHTML = `<table>
     <thead><tr><th>virtual nodes per server</th><th>how unfair the split is (spread)</th></tr></thead>

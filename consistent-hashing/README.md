@@ -392,6 +392,14 @@ of others. The same 4 servers as above:
   200 virtual nodes each -> shares 24.1%  24.0%  25.6%  26.3%
 ```
 
+One subtlety worth getting straight, because it is easy to misread the table above: virtual
+nodes do not make a *particular* layout better. If you got lucky and your 4 servers happened to
+land at almost exactly 90 degrees apart, adding virtual nodes would make your split slightly
+*worse*, by dragging it back toward the average. What virtual nodes buy is that you no longer
+need luck. They shrink the range of possible outcomes, so a bad roll becomes impossible. They
+make a good layout **reliable** rather than making a lucky layout better — and in production you
+do not get to choose your roll.
+
 **Why this fixes problem 2.** A server's territory is no longer one contiguous arc but dozens
 of thin slices scattered all around the circle, each with a different neighbour clockwise of
 it. So when the server dies, its load is not dumped on one machine — it is split into dozens
