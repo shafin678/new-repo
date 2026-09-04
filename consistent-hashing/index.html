@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consistent Hashing, by hand</title>
+<style>
+  :root {
+    --bg: #0e1117;
+    --panel: #161b25;
+    --panel-2: #1d2430;
+    --line: #2b3444;
+    --text: #e6edf3;
+    --dim: #98a5b6;
+    --accent: #58a6ff;
+    --bad: #f8636b;
+    --good: #4ec98d;
+    --s0: #b39ddb;
+    --s1: #35c2e8;
+    --s2: #f562d4;
+    --s3: #f5a95f;
+    --s4: #2fa96a;
+    --s5: #e8d44d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -0.4px; }
+  h2 { font-size: 21px; margin: 0 0 4px; letter-spacing: -0.2px; }
+  .sub { color: var(--dim); margin: 0 0 32px; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .act { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; }
+  p { margin: 12px 0; }
+  p.note { color: var(--dim); font-size: 14.5px; }
+  code { background: var(--panel-2); padding: 2px 6px; border-radius: 5px; font-size: 14px; }
+  button {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: #1f4a7a; border-color: #2e6db0; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0; }
+  .controls .spacer { flex: 1; }
+
+  /* modulo panel */
+  .formula { font-size: 19px; text-align: center; margin: 4px 0 18px; font-family: ui-monospace, monospace; }
+  .formula b { color: var(--accent); }
+  .cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .col { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-height: 168px; }
+  .col.dead { opacity: .35; }
+  .col h4 { margin: 0 0 2px; font-size: 14px; }
+  .col .idx { color: var(--dim); font-size: 12px; margin-bottom: 10px; }
+  .chip {
+    display: block; margin-bottom: 6px; padding: 4px 8px; border-radius: 6px;
+    background: #29313f; font-family: ui-monospace, monospace; font-size: 13px;
+    transition: background .3s, color .3s;
+  }
+  .chip.moved { background: #4a1d24; color: var(--bad); font-weight: 700; }
+  .verdict { margin-top: 18px; font-size: 15px; }
+  .verdict b { font-size: 17px; }
+  .bad { color: var(--bad); }
+  .good { color: var(--good); }
+
+  /* ring panel */
+  .ringgrid { display: grid; grid-template-columns: 440px 1fr; gap: 28px; align-items: start; }
+  @media (max-width: 900px) { .ringgrid { grid-template-columns: 1fr; } .cols { grid-template-columns: repeat(2, 1fr); } }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .nodelabel { font: 600 11px ui-monospace, monospace; fill: #0e1117; }
+  .keylabel { font: 600 10px ui-monospace, monospace; fill: var(--text); }
+  .walk { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; }
+  .arcbase { fill: none; stroke-width: 13; }
+  .server-toggle { display: flex; flex-wrap: wrap; gap: 8px; }
+  .server-toggle button { display: flex; align-items: center; gap: 7px; }
+  .server-toggle .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .server-toggle button.off { opacity: .4; text-decoration: line-through; }
+  .slider { display: flex; align-items: center; gap: 12px; margin: 6px 0 2px; }
+  .slider input { flex: 1; accent-color: var(--accent); }
+  .slider .val { font-family: ui-monospace, monospace; width: 46px; text-align: right; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
+  td.mono { font-family: ui-monospace, monospace; }
+  .bar { height: 9px; border-radius: 5px; min-width: 2px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 14px; }
+  .stat .big { font-size: 22px; font-weight: 700; }
+  .stat .cap { color: var(--dim); font-size: 13px; }
+  .strip { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0; margin-top: 14px; word-break: break-all; line-height: 1.35; }
+  .legend { color: var(--dim); font-size: 13px; margin-top: 6px; }
+  ol.steps { color: var(--dim); font-size: 14.5px; padding-left: 22px; }
+  ol.steps li { margin: 6px 0; }
+  ol.steps b { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Consistent Hashing, by hand</h1>
+  <p class="sub">Click things and watch which keys have to move. Companion to "Design Consistent Hashing".</p>
+
+  <!-- ================= ACT 1 ================= -->
+  <section>
+    <div class="act">Act 1 &mdash; the problem</div>
+    <h2>Modulo hashing: one dead server, chaos everywhere</h2>
+    <p>Each key is placed by dividing its hash by the number of servers and keeping the
+       remainder. Simple and fast &mdash; until the number of servers changes.</p>
+    <div class="formula">serverIndex = hash(key) % <b id="modN">4</b></div>
+    <div class="cols" id="modCols"></div>
+    <div class="controls">
+      <button class="primary" id="modKill">Kill server 1</button>
+      <button id="modAdd">Add a 5th server</button>
+      <button id="modReset">Reset</button>
+    </div>
+    <div class="verdict" id="modVerdict"></div>
+    <p class="note">These are the same 8 keys and the same hash values as Table 5-1 in the chapter.</p>
+  </section>
+
+  <!-- ================= ACT 2 ================= -->
+  <section>
+    <div class="act">Act 2 &mdash; the fix</div>
+    <h2>The hash ring</h2>
+    <p>Two changes fix everything. First, throw away the <code>% N</code> &mdash; now no part of the
+       maths knows how many servers exist, so nothing breaks when that number changes. Second,
+       hash the <em>servers</em> onto the same circle as the keys. Then a single rule places every
+       key: <b>start at the key and walk clockwise; the first server you meet owns it.</b></p>
+
+    <div class="ringgrid">
+      <div>
+        <svg id="ring" viewBox="-30 -30 500 500" aria-label="hash ring"></svg>
+        <p class="note" id="ringHint">Click any key to watch it walk clockwise to its server.</p>
+      </div>
+      <div>
+        <div class="server-toggle" id="serverToggle"></div>
+
+        <div class="slider" style="margin-top:18px">
+          <label for="vnodes" style="min-width:105px">Virtual nodes</label>
+          <input type="range" id="vnodes" min="1" max="60" value="1">
+          <span class="val" id="vnodesVal">1</span>
+        </div>
+        <div class="slider">
+          <label for="keycount" style="min-width:105px">Keys</label>
+          <input type="range" id="keycount" min="4" max="400" value="8">
+          <span class="val" id="keycountVal">8</span>
+        </div>
+
+        <div class="stat">
+          <div class="big" id="movedBig">&mdash;</div>
+          <div class="cap" id="movedCap">Toggle a server above to see how many keys move.</div>
+        </div>
+
+        <table style="margin-top:16px">
+          <thead><tr><th>server</th><th>share of ring</th><th>keys</th></tr></thead>
+          <tbody id="loadRows"></tbody>
+        </table>
+        <div class="legend" id="spreadLine"></div>
+      </div>
+    </div>
+
+    <div class="strip" id="strip"></div>
+    <div class="legend">The ring cut open at 0 and laid flat. Each coloured run is one server's
+      territory &mdash; the stretch of hash space whose keys walk clockwise into it.</div>
+  </section>
+
+  <!-- ================= ACT 3 ================= -->
+  <section>
+    <div class="act">Act 3 &mdash; the refinement</div>
+    <h2>Why virtual nodes are not optional</h2>
+    <p>The four servers above happen to sit tidily around the circle. Real hashing is rarely that
+       kind. With one point per server the arcs are random, so one machine can easily end up owning
+       half the ring &mdash; and when it dies, that whole half lands on a single neighbour. Give each
+       server many points instead and it owns many small arcs, which average out.</p>
+    <div id="vnodeChart"></div>
+    <p class="note">Each row is averaged over 24 differently-named clusters, because a standard
+       deviation taken across only a handful of servers is far too noisy to read a trend from. The
+       numbers track 1/&radic;V closely, which is why the chapter quotes roughly 10% at 100 virtual
+       nodes and 5% at 200. Cost of the trick: 4 servers with 200 virtual nodes means 800 points to
+       store and search instead of 4. A bigger routing table buys a fairer spread.</p>
+  </section>
+
+  <section>
+    <div class="act">Recap</div>
+    <h2>The whole chapter in five lines</h2>
+    <ol class="steps">
+      <li><b>Modulo hashing spreads keys evenly but cannot survive a change in N</b>, because the
+          divisor is baked into every answer.</li>
+      <li><b>Put the hash space on a circle</b> and hash servers onto it as well as keys.</li>
+      <li><b>A key belongs to the first server clockwise of it.</b> That is the entire lookup.</li>
+      <li><b>Adding or removing a server only rewrites one arc</b>, so only that arc's keys move
+          &mdash; about k/n of them, instead of nearly all.</li>
+      <li><b>Give every server many virtual nodes</b> so the arcs are numerous and small, which
+          makes the load fair and stops one death from crushing one neighbour.</li>
+    </ol>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+
+/* --------------------------------------------------------------------------
+   A hash function. The chapter uses SHA-1 over a 2^160 space; here a small
+   32-bit mixer stands in, because the only thing that matters for the picture
+   is that positions are deterministic and evenly scattered.
+   -------------------------------------------------------------------------- */
+const SPACE = 2 ** 32;
+
+// A hash function needs a starting constant, and any value will do. This one is
+// picked so that the four default servers happen to land tidily around the
+// circle, which keeps the first picture as readable as the chapter's diagrams.
+const SEED = 0x811cd044;
+
+function hash32(text) {
+  let h = SEED;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  h ^= h >>> 16; h = Math.imul(h, 0x7feb352d);
+  h ^= h >>> 15; h = Math.imul(h, 0x846ca68b);
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+
+const COLORS = ["--s0", "--s1", "--s2", "--s3", "--s4", "--s5"]
+  .map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim());
+
+/* ==========================================================================
+   ACT 1: modulo hashing
+   ========================================================================== */
+
+// The exact hash values from Table 5-1 of the chapter.
+const BOOK = [
+  ["key0", 18358617], ["key1", 26143584], ["key2", 18131146], ["key3", 35863496],
+  ["key4", 34085809], ["key5", 27581703], ["key6", 38164978], ["key7", 22530351],
+];
+
+const ALL_SERVERS = ["server 0", "server 1", "server 2", "server 3", "server 4"];
+let modLive = ["server 0", "server 1", "server 2", "server 3"];
+
+function modPlace(live) {
+  const map = new Map();
+  for (const [key, value] of BOOK) map.set(key, live[value % live.length]);
+  return map;
+}
+
+function renderMod(moved = new Set(), verdict = "") {
+  document.getElementById("modN").textContent = modLive.length;
+  const placement = modPlace(modLive);
+  const shown = ALL_SERVERS.slice(0, Math.max(4, modLive.length));
+  const cols = document.getElementById("modCols");
+  cols.style.gridTemplateColumns = `repeat(${shown.length}, 1fr)`;
+  cols.innerHTML = shown.map(server => {
+    const index = modLive.indexOf(server);
+    const dead = index === -1;
+    const keys = [...placement].filter(([, s]) => s === server).map(([k]) => k);
+    return `<div class="col${dead ? " dead" : ""}">
+      <h4 style="color:${COLORS[ALL_SERVERS.indexOf(server)]}">${server}</h4>
+      <div class="idx">${dead ? "offline" : "index " + index}</div>
+      ${keys.map(k => `<span class="chip${moved.has(k) ? " moved" : ""}">${k}</span>`).join("")}
+    </div>`;
+  }).join("");
+  document.getElementById("modVerdict").innerHTML = verdict;
+}
+
+function modChange(nextLive) {
+  const before = modPlace(modLive);
+  const after = modPlace(nextLive);
+  const moved = new Set([...before.keys()].filter(k => before.get(k) !== after.get(k)));
+  const forced = [...before.keys()].filter(k => !nextLive.includes(before.get(k)));
+  modLive = nextLive;
+
+  let verdict = `<b class="bad">${moved.size} of 8 keys moved</b> &nbsp;(${[...moved].join(", ")})`;
+  if (forced.length) {
+    verdict += `<br><span class="cap" style="color:var(--dim)">Only ${forced.length}
+      keys actually lived on the dead server (${forced.join(", ")}). The other
+      ${moved.size - forced.length} moved for no reason at all &mdash; their server was
+      healthy and still holding their data.</span>`;
+  } else {
+    verdict += `<br><span style="color:var(--dim)">Nothing was lost. A brand new empty server
+      joined, and it still reshuffled most of the cluster.</span>`;
+  }
+  verdict += `<br><span style="color:var(--dim)">Every moved key is now a cache miss on the
+    next request. All clients, all at once: that is the miss storm.</span>`;
+  renderMod(moved, verdict);
+}
+
+document.getElementById("modKill").onclick = () => {
+  if (modLive.includes("server 1")) modChange(modLive.filter(s => s !== "server 1"));
+};
+document.getElementById("modAdd").onclick = () => {
+  if (!modLive.includes("server 4")) modChange([...modLive, "server 4"]);
+};
+document.getElementById("modReset").onclick = () => {
+  modLive = ["server 0", "server 1", "server 2", "server 3"];
+  renderMod(new Set(), "");
+};
+renderMod();
+
+/* ==========================================================================
+   ACT 2 + 3: the ring
+   ========================================================================== */
+
+class Ring {
+  constructor(servers, vnodes) {
+    this.vnodes = vnodes;
+    this.nodes = [];                       // {pos, server, label}
+    for (const server of servers) {
+      for (const [label, pos] of Object.entries(this.pointsFor(server))) {
+        this.nodes.push({ pos, server, label });
+      }
+    }
+    this.nodes.sort((a, b) => a.pos - b.pos);
+  }
+  pointsFor(server) {
+    if (this.vnodes === 1) return { [server]: hash32(server) };
+    const out = {};
+    for (let i = 0; i < this.vnodes; i++) out[`${server}_${i}`] = hash32(`${server}_${i}`);
+    return out;
+  }
+  // The one rule: walk clockwise to the first node.
+  nodeAtOrAfter(pos) {
+    if (!this.nodes.length) return null;
+    let low = 0, high = this.nodes.length;
+    while (low < high) {
+      const mid = (low + high) >> 1;
+      if (this.nodes[mid].pos < pos) low = mid + 1; else high = mid;
+    }
+    return this.nodes[low % this.nodes.length];
+  }
+  nodeFor(key) { return this.nodeAtOrAfter(hash32(key)); }
+  serverFor(key) { const n = this.nodeFor(key); return n && n.server; }
+  // Fraction of the hash space a server owns, adding up all of its arcs.
+  shareOf(server) {
+    if (this.nodes.length === 1) return this.nodes[0].server === server ? 1 : 0;
+    let owned = 0;
+    for (let i = 0; i < this.nodes.length; i++) {
+      if (this.nodes[i].server !== server) continue;
+      const prev = this.nodes[(i - 1 + this.nodes.length) % this.nodes.length].pos;
+      owned += ((this.nodes[i].pos - prev) % SPACE + SPACE) % SPACE;
+    }
+    return owned / SPACE;
+  }
+}
+
+const RING_ALL = ["server 0", "server 1", "server 2", "server 3", "server 4", "server 5"];
+let ringLive = new Set(["server 0", "server 1", "server 2", "server 3"]);
+let vnodes = 1;
+let keyCount = 8;
+let selectedKey = null;
+
+const colorOf = server => COLORS[RING_ALL.indexOf(server)];
+const liveServers = () => RING_ALL.filter(s => ringLive.has(s));
+const keyNames = () => Array.from({ length: keyCount }, (_, i) => "key" + i);
+
+/* --- geometry: 0 at 12 o'clock, angles increase clockwise --- */
+const CX = 220, CY = 220, R = 175;
+const toAngle = pos => (pos / SPACE) * 360 - 90;
+const pointAt = (pos, radius = R) => {
+  const a = toAngle(pos) * Math.PI / 180;
+  return [CX + radius * Math.cos(a), CY + radius * Math.sin(a)];
+};
+function arcPath(from, to, radius = R) {
+  const [x1, y1] = pointAt(from, radius);
+  const [x2, y2] = pointAt(to, radius);
+  const sweep = ((to - from) % SPACE + SPACE) % SPACE;
+  const large = sweep > SPACE / 2 ? 1 : 0;
+  return `M ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2}`;
+}
+
+function drawRing() {
+  const ring = new Ring(liveServers(), vnodes);
+  const svg = document.getElementById("ring");
+  const parts = [];
+
+  parts.push(`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#2b3444" stroke-width="1.5"/>`);
+
+  // Ownership arcs: each node owns the stretch behind it, up to its own point.
+  if (ring.nodes.length === 1) {
+    parts.push(`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
+      stroke="${colorOf(ring.nodes[0].server)}" stroke-width="13" opacity="0.55"/>`);
+  } else {
+    ring.nodes.forEach((node, i) => {
+      const prev = ring.nodes[(i - 1 + ring.nodes.length) % ring.nodes.length].pos;
+      parts.push(`<path class="arcbase" d="${arcPath(prev, node.pos)}"
+        stroke="${colorOf(node.server)}" opacity="0.55"/>`);
+    });
+  }
+
+  // Server nodes. Labels only when there are few enough to read.
+  const showLabels = ring.nodes.length <= 12;
+  for (const node of ring.nodes) {
+    const [x, y] = pointAt(node.pos);
+    const r = showLabels ? 13 : 4.5;
+    parts.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${colorOf(node.server)}"
+      stroke="#0e1117" stroke-width="2"/>`);
+    if (showLabels) {
+      parts.push(`<text class="nodelabel" x="${x}" y="${y + 4}" text-anchor="middle">${
+        node.label.replace("server ", "s")}</text>`);
+    }
+  }
+
+  // Keys, sitting just outside the ring.
+  const names = keyNames();
+  const showKeyLabels = names.length <= 12;
+  for (const key of names) {
+    const pos = hash32(key);
+    const [x, y] = pointAt(pos, R + 20);
+    const isSel = key === selectedKey;
+    parts.push(`<circle class="keydot" data-key="${key}" cx="${x}" cy="${y}"
+      r="${isSel ? 8 : (showKeyLabels ? 6 : 3.2)}"
+      fill="${isSel ? "#fff" : "#0e1117"}" stroke="#e6edf3" stroke-width="1.8"
+      style="cursor:pointer"/>`);
+    if (showKeyLabels) {
+      const [lx, ly] = pointAt(pos, R + 42);
+      parts.push(`<text class="keylabel" x="${lx}" y="${ly + 3}" text-anchor="middle"
+        style="pointer-events:none">${key}</text>`);
+    }
+  }
+
+  // The clockwise walk for the selected key.
+  if (selectedKey) {
+    const from = hash32(selectedKey);
+    const node = ring.nodeFor(selectedKey);
+    if (node) {
+      parts.push(`<path class="walk" d="${arcPath(from, node.pos, R + 20)}"
+        marker-end="url(#arrow)"/>`);
+      document.getElementById("ringHint").innerHTML =
+        `<b>${selectedKey}</b> walks clockwise and hits <b style="color:${colorOf(node.server)}">${
+          node.label}</b>, so it is stored on <b>${node.server}</b>.`;
+    }
+  }
+
+  svg.innerHTML = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5"
+      markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#fff"/></marker></defs>` + parts.join("");
+
+  svg.querySelectorAll(".keydot").forEach(dot => {
+    dot.onclick = () => { selectedKey = dot.dataset.key; drawRing(); };
+  });
+
+  drawLoads(ring);
+  drawStrip(ring);
+  return ring;
+}
+
+function drawLoads(ring) {
+  const servers = liveServers();
+  const names = keyNames();
+  const counts = new Map(servers.map(s => [s, 0]));
+  for (const key of names) {
+    const server = ring.serverFor(key);
+    if (server) counts.set(server, counts.get(server) + 1);
+  }
+  const shares = servers.map(s => ring.shareOf(s));
+  document.getElementById("loadRows").innerHTML = servers.map((server, i) => `
+    <tr>
+      <td style="color:${colorOf(server)}">${server}</td>
+      <td><div class="bar" style="width:${Math.max(2, shares[i] * 100)}%;
+        background:${colorOf(server)}"></div>
+        <span class="mono" style="font-size:12px;color:var(--dim)">${(shares[i] * 100).toFixed(1)}%</span></td>
+      <td class="mono">${counts.get(server)}</td>
+    </tr>`).join("");
+
+  const spread = spreadFor(servers, vnodes);
+  document.getElementById("spreadLine").innerHTML =
+    `Fair share would be <b>${(100 / servers.length).toFixed(1)}%</b> each.
+     Spread (standard deviation as a share of the mean): <b class="${
+       spread < 0.15 ? "good" : "bad"}">${(spread * 100).toFixed(1)}%</b> &mdash;
+     smaller is fairer.`;
+}
+
+function drawStrip(ring) {
+  const width = 150;
+  const bar = document.createElement("div");
+  bar.style.cssText = "display:flex;height:20px;border-radius:4px;overflow:hidden";
+  for (let i = 0; i < width; i++) {
+    const node = ring.nodeAtOrAfter(Math.floor(i * SPACE / width));
+    const cell = document.createElement("div");
+    cell.style.cssText = `flex:1;background:${node ? colorOf(node.server) : "#2b3444"}`;
+    bar.appendChild(cell);
+  }
+  const host = document.getElementById("strip");
+  host.innerHTML = "";
+  host.appendChild(bar);
+}
+
+function reportMoved(before, after, what) {
+  const names = keyNames();
+  const moved = names.filter(k => before.get(k) !== after.get(k));
+  const forced = names.filter(k => !ringLive.has(before.get(k)));
+  const pct = (moved.length / names.length * 100).toFixed(1);
+  document.getElementById("movedBig").innerHTML =
+    `<span class="${moved.length / names.length > 0.4 ? "bad" : "good"}">${
+      moved.length} of ${names.length} keys moved</span> <span style="font-size:15px;color:var(--dim)">(${pct}%)</span>`;
+  document.getElementById("movedCap").innerHTML = forced.length
+    ? `${what}. ${forced.length} of those keys lived on it and had no choice.
+       ${moved.length - forced.length} moved unnecessarily &mdash;
+       ${moved.length === forced.length ? "<b class='good'>which is none at all.</b>" : "which should be zero."}`
+    : `${what}. Under modulo hashing this would have been most of the cluster.`;
+}
+
+function applyChange(mutate, what) {
+  const before = new Map();
+  const ringBefore = new Ring(liveServers(), vnodes);
+  for (const key of keyNames()) before.set(key, ringBefore.serverFor(key));
+  mutate();
+  const ringAfter = drawRing();
+  const after = new Map();
+  for (const key of keyNames()) after.set(key, ringAfter.serverFor(key));
+  reportMoved(before, after, what);
+  drawToggles();
+}
+
+function drawToggles() {
+  document.getElementById("serverToggle").innerHTML = RING_ALL.map(server => `
+    <button data-server="${server}" class="${ringLive.has(server) ? "" : "off"}">
+      <span class="dot" style="background:${colorOf(server)}"></span>${server}
+    </button>`).join("");
+  document.querySelectorAll("#serverToggle button").forEach(btn => {
+    btn.onclick = () => {
+      const server = btn.dataset.server;
+      const leaving = ringLive.has(server);
+      if (leaving && ringLive.size <= 1) return;
+      applyChange(
+        () => { leaving ? ringLive.delete(server) : ringLive.add(server); },
+        leaving ? `Removed ${server}` : `Added ${server}`
+      );
+    };
+  });
+}
+
+document.getElementById("vnodes").oninput = event => {
+  vnodes = +event.target.value;
+  document.getElementById("vnodesVal").textContent = vnodes;
+  drawRing();
+  drawVnodeChart();
+};
+document.getElementById("keycount").oninput = event => {
+  keyCount = +event.target.value;
+  document.getElementById("keycountVal").textContent = keyCount;
+  if (keyCount <= 12) selectedKey = null;
+  drawRing();
+};
+
+/* --- Act 3: spread against virtual node count ---
+   A standard deviation taken across only 4 servers is a very noisy number, so a
+   single cluster would give a jumpy, misleading curve. Each row below is the
+   average over TRIALS independently named clusters, which shows the real trend. */
+const TRIALS = 24;
+
+function spreadFor(servers, vnodeCount) {
+  const ring = new Ring(servers, vnodeCount);
+  const shares = servers.map(s => ring.shareOf(s));
+  const mean = shares.reduce((a, b) => a + b, 0) / shares.length;
+  const variance = shares.reduce((a, b) => a + (b - mean) ** 2, 0) / (shares.length - 1 || 1);
+  return Math.sqrt(variance) / mean;
+}
+
+function drawVnodeChart() {
+  const size = liveServers().length;
+  const rows = [1, 2, 5, 10, 25, 50, 100, 200].map(count => {
+    let total = 0;
+    for (let trial = 0; trial < TRIALS; trial++) {
+      const servers = Array.from({ length: size }, (_, i) => `box-${trial}-${i}`);
+      total += spreadFor(servers, count);
+    }
+    return { count, spread: total / TRIALS };
+  });
+  const worst = Math.max(...rows.map(r => r.spread));
+  document.getElementById("vnodeChart").innerHTML = `<table>
+    <thead><tr><th>virtual nodes per server</th><th>how unfair the split is (spread)</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td class="mono">${r.count}</td>
+      <td>
+        <div class="bar" style="width:${Math.max(1, r.spread / worst * 100)}%;
+          background:${r.spread < 0.15 ? "var(--good)" : "var(--bad)"}"></div>
+        <span class="mono" style="font-size:12px;color:var(--dim)">${(r.spread * 100).toFixed(1)}%</span>
+      </td></tr>`).join("")}</tbody></table>`;
+}
+
+drawToggles();
+drawRing();
+drawVnodeChart();
+</script>
+</body>
+</html>
