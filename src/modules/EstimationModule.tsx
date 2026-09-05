@@ -56,6 +56,15 @@ function humanTime(ns: number) {
   return `${ns} ns`
 }
 
+function humanDuration(seconds: number) {
+  if (seconds >= 86_400) return `${(seconds / 86_400).toFixed(2)} days`
+  if (seconds >= 3_600) return `${(seconds / 3_600).toFixed(2)} hours`
+  if (seconds >= 60) return `${(seconds / 60).toFixed(2)} min`
+  if (seconds >= 1) return `${seconds.toFixed(2)} sec`
+  if (seconds >= 0.001) return `${(seconds * 1_000).toFixed(2)} ms`
+  return `${(seconds * 1_000_000).toFixed(2)} μs`
+}
+
 function PowersLab() {
   const [power, setPower] = useState(20)
   const exact = 2n ** BigInt(power)
@@ -200,12 +209,12 @@ function AvailabilityLab() {
           <article>
             <Clock3 />
             <span>Downtime budget / day</span>
-            <strong>{humanTime(dailySeconds * 1_000_000_000)}</strong>
+            <strong>{humanDuration(dailySeconds)}</strong>
           </article>
           <article>
             <Timer />
             <span>Downtime budget / year</span>
-            <strong>{humanTime(yearlySeconds * 1_000_000_000)}</strong>
+            <strong>{humanDuration(yearlySeconds)}</strong>
           </article>
         </div>
       </div>
