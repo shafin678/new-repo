@@ -1,6 +1,12 @@
-# Hash Ring Lab
+# System Design Studio
 
-An interactive, beginner-friendly companion to the supplied “Design Consistent Hashing” chapter.
+An interactive, beginner-friendly study library covering:
+
+- Consistent hashing
+- Rate limiter design and five algorithms
+- Distributed key-value stores
+- Back-of-the-envelope estimation
+- Worked rate-limiting and latency math
 
 ## Run locally
 
