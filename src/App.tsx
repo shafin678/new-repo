@@ -24,6 +24,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { TheoryNotebook } from './modules/ModuleScaffold'
 
 type RingNode = {
   id: string
@@ -859,6 +860,82 @@ function App() {
               </p>
             </div>
           </div>
+          <TheoryNotebook
+            title="Consistent hashing foundations"
+            intro="Use this notebook when you want the deeper reason behind the ring—not only the animation."
+            topics={[
+              {
+                title: 'A hash function creates a repeatable location',
+                plain:
+                  'A hash function turns any key into a number. The same input produces the same output, so every client can independently calculate where to look.',
+                analogy:
+                  'A library catalog turns a book title into a repeatable shelf code. The code is not the book; it only helps find the correct area.',
+                technical:
+                  'Good distribution matters more here than cryptographic secrecy. Collisions are possible in a finite hash space, and production systems define how to handle them.',
+                remember: 'Hashing chooses a location; it does not encrypt the key.',
+              },
+              {
+                title: 'Modulo couples every key to the server count',
+                plain:
+                  'The formula hash(key) % N uses N as part of every assignment. When N changes, most remainders change even though every hash stays the same.',
+                analogy:
+                  'Numbering seats by “ticket number divided by today’s bus count” forces passengers to change buses whenever one bus leaves.',
+                technical:
+                  'Modulo partitioning works well for a fixed number of stable shards. The rehashing problem appears when physical membership changes directly alter N.',
+                remember: 'The hash is stable; the divisor is what causes the reshuffle.',
+              },
+              {
+                title: 'The ring removes the changing divisor',
+                plain:
+                  'Servers and keys receive positions in one fixed number space. Joining the largest number back to zero makes clockwise lookup wrap naturally.',
+                analogy:
+                  'People and pickup lockers are placed around a circular track. Walk forward from a package until the first locker.',
+                technical:
+                  'A server owns the interval after its previous server up to itself. The ring is a logical model; requests do not physically travel around a circle.',
+                remember: 'Key → clockwise → first server.',
+              },
+              {
+                title: 'A membership change affects one neighboring range',
+                plain:
+                  'A new server takes only the slice immediately before its position. A removed server gives its slice to the next clockwise server.',
+                analogy:
+                  'Opening a new post office changes only addresses in the nearby boundary area, not every address in the country.',
+                technical:
+                  'With k keys and n evenly distributed nodes, adding or removing one node moves roughly k/n keys on average. Actual movement depends on partition sizes.',
+                remember: 'Find the previous server anticlockwise; that interval is the affected range.',
+              },
+              {
+                title: 'One ring position per machine is too random',
+                plain:
+                  'Random server positions create unequal arcs. One machine may own a huge range while another owns almost nothing.',
+                analogy:
+                  'Giving each family one random piece of a pizza can produce one giant slice and several tiny slices.',
+                technical:
+                  'Key distribution follows partition length when hashes are uniform. Node removal can make an already-large neighboring partition even larger.',
+                remember: 'Uniform hashing does not guarantee equal partitions in a small sample.',
+              },
+              {
+                title: 'Virtual nodes average many small slices',
+                plain:
+                  'Each physical server appears at many positions on the ring. Its total responsibility becomes the sum of many smaller, scattered partitions.',
+                analogy:
+                  'Instead of one random pizza slice, each person receives many small slices from around the pizza; totals are more likely to be similar.',
+                technical:
+                  'More virtual nodes reduce load variance and can represent heterogeneous capacity, but increase metadata, movement planning, and operational complexity.',
+                remember: 'Virtual nodes are labels pointing to real servers—not extra machines.',
+              },
+              {
+                title: 'Balance, replication, and hot keys are separate',
+                plain:
+                  'The ring spreads many different keys. Replication creates extra copies for failure tolerance. A single extremely popular key can still overload its owner.',
+                analogy:
+                  'Evenly assigning books across librarians does not help if every visitor asks one librarian for the same bestseller.',
+                technical:
+                  'Mitigate hot popularity with caching, replication, request coalescing, key splitting, or dedicated handling. Use topology-aware replicas across failure domains.',
+                remember: 'Consistent hashing balances ownership, not the popularity of one key.',
+              },
+            ]}
+          />
           <NextLesson index={0} label="Turn the number line into a ring" />
         </section>
 

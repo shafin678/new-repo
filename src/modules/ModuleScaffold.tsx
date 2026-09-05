@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Sparkles } from 'lucide-react'
+import { BookOpen, Check, ChevronDown, Lightbulb, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 export type ModuleSection = {
@@ -133,5 +133,74 @@ export function ConceptNote({
       <strong>{title}</strong>
       <p>{children}</p>
     </div>
+  )
+}
+
+export type TheoryTopic = {
+  title: string
+  plain: string
+  analogy?: string
+  technical?: string
+  remember: string
+}
+
+export function TheoryNotebook({
+  title = 'Theory notebook',
+  intro,
+  topics,
+}: {
+  title?: string
+  intro: string
+  topics: TheoryTopic[]
+}) {
+  return (
+    <aside className="theory-notebook">
+      <header>
+        <span>
+          <BookOpen size={19} />
+        </span>
+        <div>
+          <small>Read at your own pace</small>
+          <h3>{title}</h3>
+          <p>{intro}</p>
+        </div>
+      </header>
+      <div className="theory-topics">
+        {topics.map((topic, index) => (
+          <details key={topic.title} open={index === 0}>
+            <summary>
+              <i>{String(index + 1).padStart(2, '0')}</i>
+              <strong>{topic.title}</strong>
+              <ChevronDown size={17} />
+            </summary>
+            <div className="theory-body">
+              <section>
+                <small>In simple words</small>
+                <p>{topic.plain}</p>
+              </section>
+              {topic.analogy && (
+                <section className="theory-analogy">
+                  <small>Think of it like this</small>
+                  <p>{topic.analogy}</p>
+                </section>
+              )}
+              {topic.technical && (
+                <section>
+                  <small>A little more technical</small>
+                  <p>{topic.technical}</p>
+                </section>
+              )}
+              <div className="theory-remember">
+                <Lightbulb size={16} />
+                <span>
+                  <small>Remember</small>
+                  {topic.remember}
+                </span>
+              </div>
+            </div>
+          </details>
+        ))}
+      </div>
+    </aside>
   )
 }

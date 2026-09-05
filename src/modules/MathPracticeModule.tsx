@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { ConceptNote, ModuleSection, ModuleShell, SectionIntro } from './ModuleScaffold'
+import { ConceptNote, ModuleSection, ModuleShell, SectionIntro, TheoryNotebook } from './ModuleScaffold'
 
 type PracticeRow = {
   time: string
@@ -360,6 +360,72 @@ export default function MathPracticeModule() {
           The same timestamp can produce different behavior depending on window boundaries, accepted-log policy,
           refill order, and whether a queue drains before arrivals.
         </SectionIntro>
+        <TheoryNotebook
+          title="How to reason about request timelines"
+          intro="The calculations become much easier when every request follows one written sequence. These concepts explain why the order matters."
+          topics={[
+            {
+              title: 'State before and state after are not interchangeable',
+              plain:
+                'The decision is usually made from the state before the candidate request. If accepted, the request then changes the state.',
+              analogy:
+                'A five-seat room with four people has one free seat before a visitor enters and zero afterward. Both numbers are correct but answer different questions.',
+              technical:
+                'Tables should label counters as pre-request or post-request. A prospective formula explicitly adds the candidate once, such as estimated usage + 1 ≤ limit.',
+              remember: 'Read state, test the candidate, then mutate state.',
+            },
+            {
+              title: 'Simultaneous events still need an order',
+              plain:
+                'Requests with the same timestamp cannot all see the same unchanged state. The system processes them in some order, even if that order is extremely fast.',
+              analogy:
+                'Five people reach one checkout together, but the cashier still scans one basket before the next.',
+              technical:
+                'Production concurrency requires atomic operations. A written exercise normally uses left-to-right request order unless it says otherwise.',
+              remember: 'Write down the tie-breaking order for equal timestamps.',
+            },
+            {
+              title: 'Window brackets define edge behavior',
+              plain:
+                'A square bracket includes its endpoint; a round bracket excludes it. Therefore time 10 belongs to [10,20), not [0,10).',
+              analogy:
+                'Hotel checkout at 10 ends yesterday’s booking and begins the room’s next schedule.',
+              technical:
+                'For a rolling window, (now − 10, now] removes a request exactly ten seconds old and includes the new timestamp.',
+              remember: 'At a boundary, decide the interval before counting.',
+            },
+            {
+              title: 'Rejected requests normally do not consume quota',
+              plain:
+                'A rejected request did not use the protected service, so an exact usage log usually keeps accepted timestamps only.',
+              analogy:
+                'Being turned away from a full event should not count as attending the event.',
+              technical:
+                'Logging every rejected attempt can extend lockout forever under persistent retries. Separate abuse-attempt metrics may still count rejected traffic.',
+              remember: 'Usage state and abuse-observation state can be different.',
+            },
+            {
+              title: 'Advance time before processing arrivals',
+              plain:
+                'Elapsed time may refill tokens, expire log entries, rotate counters, or process one queued item before the next request is tested.',
+              analogy:
+                'A parking meter gains no time while you stare at it, but a water tank refills during every second that passes—even between visitors.',
+              technical:
+                'Token balance becomes min(capacity, previous + elapsed × refill rate). Leaky-bucket exercises must specify whether draining occurs before or after arrivals.',
+              remember: 'First move the clock; then apply events at the new time.',
+            },
+            {
+              title: 'Weighted averages describe alternative paths',
+              plain:
+                'If 80% of requests take a fast path and 20% take a slow path, multiply each path time by its probability and add the contributions.',
+              analogy:
+                'If four of five trips take 10 minutes and one takes 50, the long-run average is 18 minutes—not 60.',
+              technical:
+                'Expected latency E[L] = Σ pᵢLᵢ and probabilities must total 1. This does not describe p95 or worst-case latency.',
+              remember: 'Calculate each complete branch first, then weight the branches.',
+            },
+          ]}
+        />
         <ExerciseWorkbench />
       </section>
 

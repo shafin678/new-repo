@@ -18,7 +18,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { ConceptNote, ModuleSection, ModuleShell, SectionIntro } from './ModuleScaffold'
+import { ConceptNote, ModuleSection, ModuleShell, SectionIntro, TheoryNotebook } from './ModuleScaffold'
 
 const SECTIONS: ModuleSection[] = [
   { id: 'estimate-powers', label: 'Powers & units' },
@@ -337,6 +337,92 @@ export default function EstimationModule() {
           arithmetic manageable.
         </SectionIntro>
         <PowersLab />
+        <TheoryNotebook
+          title="Estimation foundations"
+          intro="Good estimation is not guessing. It is a chain of simple assumptions, unit conversions, and sanity checks that makes an unknown system easier to discuss."
+          topics={[
+            {
+              title: 'Dimensional analysis keeps equations honest',
+              plain:
+                'Units behave like algebra. If users/day is multiplied by posts/user, “user” cancels and the result is posts/day.',
+              analogy:
+                'A recipe cannot add three cups to five minutes. The unit tells you what a number means and whether two quantities can be combined.',
+              technical:
+                'Write units beside every intermediate value and cancel them explicitly. A final QPS answer must reduce to requests/second; storage must reduce to bytes.',
+              remember: 'If the units do not produce the requested output unit, the equation is incomplete or wrong.',
+            },
+            {
+              title: 'Order of magnitude matters more than extra decimals',
+              plain:
+                'Early design decisions usually need to know whether a result is around ten, ten thousand, or ten million—not whether it is 3,472.22 instead of 3,500.',
+              analogy:
+                'Choosing between a bicycle and a cargo ship depends on whether the load is kilograms or thousands of tonnes, not its exact gram count.',
+              technical:
+                'Round inputs to one or two significant figures, keep the rounding direction visible, then sanity-check the final exponent.',
+              remember: 'Be approximately right for a clear reason, not precisely wrong from hidden assumptions.',
+            },
+            {
+              title: 'Throughput and latency answer different questions',
+              plain:
+                'Throughput is how much work finishes per unit time. Latency is how long one piece of work takes. A system can have high throughput and still make one user wait.',
+              analogy:
+                'A bus moves many passengers per hour but each passenger may travel slowly. A motorcycle moves one passenger quickly but has low total capacity.',
+              technical:
+                'QPS estimates drive aggregate capacity. Median and tail latency—often p95 or p99—describe individual experience and queueing under load.',
+              remember: 'Ask both “How many per second?” and “How long does one take?”',
+            },
+            {
+              title: 'Average traffic hides peaks',
+              plain:
+                'Dividing daily requests by 86,400 gives an average. Real users concentrate around events, time zones, launches, and retries.',
+              analogy:
+                'A restaurant averaging 20 customers per hour can still receive 60 people at dinner and nobody overnight.',
+              technical:
+                'Apply an explicit peak multiplier and consider burst duration. Capacity, autoscaling speed, queues, and caches must survive the peak—not only the daily average.',
+              remember: 'Average QPS is a starting point; peak QPS sizes the immediate system.',
+            },
+            {
+              title: 'Storage is a rate multiplied by retention',
+              plain:
+                'Daily objects times bytes per object gives daily growth. Multiply by retained days, then include replicas, indexes, metadata, compression, and expected growth.',
+              analogy:
+                'A warehouse needs space for boxes arriving each day multiplied by how long each box stays—plus aisles, copies, and packaging.',
+              technical:
+                'Separate raw logical data from physical storage. Replication and indexes multiply usage; compression reduces it; deletions, tombstones, backups, and compaction add nuance.',
+              remember: 'Always report what your storage total includes and excludes.',
+            },
+            {
+              title: 'Latency totals follow the critical path',
+              plain:
+                'Add operations that happen one after another. For parallel work, the slowest required branch—not the sum of every branch—usually controls completion.',
+              analogy:
+                'Cooking rice and vegetables together takes roughly the slower cooking time. Cooking one after the other takes both times added.',
+              technical:
+                'Expected latency weights alternative branches by probability. Tail latency needs distributions and queueing behavior, not only weighted averages.',
+              remember: 'Sequential costs add; parallel required work waits for the slowest path.',
+            },
+            {
+              title: 'Availability percentages are downtime budgets',
+              plain:
+                'A service with 99.9% availability may be unavailable for about 8.77 hours per year. Each extra nine makes the permitted downtime ten times smaller.',
+              analogy:
+                'A monthly budget turns an abstract savings percentage into the actual dollars you may spend. Downtime converts a percentage into operational reality.',
+              technical:
+                'Define the measurement period, what counts as unavailable, excluded maintenance, regional scope, and whether partial degradation violates the SLA.',
+              remember: 'More nines require architecture and operations—not just a stronger promise.',
+            },
+            {
+              title: 'Assumptions are controls, not weaknesses',
+              plain:
+                'Unknown values are normal. State a reasonable assumption, calculate from it, then show how the result changes if the assumption changes.',
+              analogy:
+                'A map needs a chosen scale. Writing the scale makes distances useful and lets another person redraw the map differently.',
+              technical:
+                'Sensitivity analysis identifies which variables dominate. Linear factors such as replication can be adjusted directly; thresholds and queue saturation may change behavior nonlinearly.',
+              remember: 'Say “I will assume…” before using an invented number.',
+            },
+          ]}
+        />
       </section>
 
       <section className="module-section dark-module-section" id="estimate-latency">

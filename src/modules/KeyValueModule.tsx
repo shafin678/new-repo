@@ -22,7 +22,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useState } from 'react'
-import { ConceptNote, ModuleSection, ModuleShell, SectionIntro } from './ModuleScaffold'
+import { ConceptNote, ModuleSection, ModuleShell, SectionIntro, TheoryNotebook } from './ModuleScaffold'
 
 const SECTIONS: ModuleSection[] = [
   { id: 'kv-contract', label: 'The contract' },
@@ -477,6 +477,102 @@ export default function KeyValueModule() {
             <span>partition and replicate</span>
           </div>
         </div>
+        <TheoryNotebook
+          title="Distributed storage foundations"
+          intro="These ideas explain why a simple get/put API needs many cooperating mechanisms once the data no longer fits safely on one machine."
+          topics={[
+            {
+              title: 'Keys are addresses; values are opaque payloads',
+              plain:
+                'The key uniquely names an item. The store uses it to place and retrieve data but usually does not understand the value’s business meaning.',
+              analogy:
+                'A coat-check ticket identifies one bag. The attendant needs the ticket number, but does not need to understand what is inside the bag.',
+              technical:
+                'Short keys reduce index and network overhead. Values may be strings, lists, serialized objects, or bytes, but the application owns their schema and interpretation.',
+              remember: 'The database understands identity and versions; the application understands meaning.',
+            },
+            {
+              title: 'Partitioning and replication solve different problems',
+              plain:
+                'Partitioning divides a large dataset so each server stores only part of it. Replication makes extra copies so data survives failures.',
+              analogy:
+                'A book series can be divided among shelves to create space, then important volumes can be photocopied into another building for safety.',
+              technical:
+                'Consistent hashing limits movement during membership changes. A replication factor N places each partition on N distinct physical servers and preferably distinct failure domains.',
+              remember: 'Partition to fit and scale; replicate to survive.',
+            },
+            {
+              title: 'CAP is about behavior during a partition',
+              plain:
+                'When messages cannot cross part of the network, a distributed store must either reject some requests to preserve one current truth or keep responding while copies may disagree.',
+              analogy:
+                'Two bank branches lose their phone connection. They can pause withdrawals until they reconnect, or continue serving and risk both spending the same balance.',
+              technical:
+                'CAP consistency is linearizability, not simply “eventually equal.” Availability requires a non-error response from every non-failing node. Outside a partition, systems often provide both.',
+              remember: 'Do not say “pick any two” without mentioning a real network partition.',
+            },
+            {
+              title: 'Consistency models describe what reads may observe',
+              plain:
+                'Strong consistency makes a completed write immediately visible to later reads. Weak consistency may return older data. Eventual consistency promises convergence after updates stop and repair succeeds.',
+              analogy:
+                'A live scoreboard is strong when everyone sees the latest goal. Cached scoreboards may lag, but eventually show the same final score.',
+              technical:
+                'Useful session guarantees include read-your-writes and monotonic reads. Eventual consistency alone provides neither a fixed convergence time nor these client guarantees.',
+              remember: '“Eventually” says copies converge later; it does not say how soon.',
+            },
+            {
+              title: 'Quorums create overlap between reads and writes',
+              plain:
+                'A write waits for W copies and a read asks R copies. If W + R is greater than N, the groups must share at least one member.',
+              analogy:
+                'If five classmates hold copies, a writer updates three and a reader asks three; the two groups cannot be completely separate.',
+              technical:
+                'Overlap supports fresh reads only with durable acknowledgements, correct version ordering, the intended replica set, and conflict handling. Sloppy quorums may temporarily use different servers.',
+              remember: 'W + R > N gives overlap, not automatic correctness.',
+            },
+            {
+              title: 'Versions preserve causality, not wall-clock truth',
+              plain:
+                'A version records that one value came after another. Concurrent versions are both valid when neither was created from knowledge of the other.',
+              analogy:
+                'Two people edit offline copies of the same document. Their edits are siblings; a timestamp alone cannot tell which meaning should win.',
+              technical:
+                'Vector clocks compare per-writer counters. Component-wise dominance means ancestry; incomparable vectors mean concurrency. The application must merge business values.',
+              remember: 'Detecting a conflict and resolving its meaning are separate jobs.',
+            },
+            {
+              title: 'Failure detectors only build suspicion',
+              plain:
+                'A silent server may be dead, slow, paused, or separated by the network. Other nodes cannot know perfectly; they infer failure from missing heartbeats.',
+              analogy:
+                'A friend not answering the phone might be unavailable or simply have no signal. A second confirmation increases confidence but is not proof.',
+              technical:
+                'Gossip spreads heartbeat counters efficiently. Timeout length balances fast detection against false positives, and robust protocols track incarnation numbers and state transitions.',
+              remember: 'In a distributed system, timeout means “suspect,” not “certainly dead.”',
+            },
+            {
+              title: 'Temporary cover and permanent repair are different',
+              plain:
+                'Hinted handoff keeps accepting writes while a preferred replica is briefly down. Anti-entropy later compares replicas and repairs lasting differences.',
+              analogy:
+                'A neighbor holds your mail during a short trip; an inventory audit finds and replaces anything that remained missing afterward.',
+              technical:
+                'Merkle trees compare hashes from large ranges down to small mismatching buckets, so transfer is proportional to differences rather than the entire dataset.',
+              remember: 'Hints preserve availability; repair restores long-term agreement.',
+            },
+            {
+              title: 'LSM storage turns random writes into sequential work',
+              plain:
+                'Writes first enter a durable log and sorted memory. Full memory is flushed as an immutable sorted file. Reads may need to inspect several generations.',
+              analogy:
+                'Write new notes quickly into today’s notebook, then periodically file a sorted archive. Finding an old note may require checking several archives.',
+              technical:
+                'Commit logs provide recovery, memtables buffer and sort, SSTables are immutable, Bloom filters skip files that definitely lack a key, and compaction merges files and removes obsolete versions.',
+              remember: 'Fast writes create later work: read amplification and compaction.',
+            },
+          ]}
+        />
       </section>
 
       <section className="module-section module-tint" id="kv-cap">

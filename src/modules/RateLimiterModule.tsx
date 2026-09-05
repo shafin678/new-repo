@@ -20,7 +20,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { ConceptNote, ModuleSection, ModuleShell, SectionIntro } from './ModuleScaffold'
+import { ConceptNote, ModuleSection, ModuleShell, SectionIntro, TheoryNotebook } from './ModuleScaffold'
 
 type AlgorithmId = 'token' | 'leaky' | 'fixed' | 'log' | 'counter'
 type Decision = 'accepted' | 'rejected' | 'queued' | 'processed'
@@ -486,6 +486,92 @@ export default function RateLimiterModule() {
             </div>
           ))}
         </div>
+        <TheoryNotebook
+          title="Rate limiting foundations"
+          intro="Before comparing algorithms, build a clear picture of what is being counted, whose usage is counted, and what happens when the rule is reached."
+          topics={[
+            {
+              title: 'Rate, quota, and burst are different',
+              plain:
+                'A rate describes speed, such as 10 requests each second. A quota describes a total allowance, such as 1,000 requests each day. A burst is a short cluster of requests that arrives faster than the long-term rate.',
+              analogy:
+                'A road may allow 600 cars per hour but still accept 20 cars arriving together at a green light. The hourly flow and the momentary burst describe different things.',
+              technical:
+                'Token buckets represent this distinction directly: refill rate controls long-term throughput, while bucket capacity controls the largest immediately acceptable burst.',
+              remember: 'Always ask two questions: “How fast over time?” and “How many may arrive together?”',
+            },
+            {
+              title: 'The limit belongs to an identity and a scope',
+              plain:
+                'A number like “5 per minute” is incomplete. You must say five for whom and for which action: per user, tenant, API key, IP address, device, route, or a combination.',
+              analogy:
+                'A library can limit five books per person, not five books for the entire building. It may apply a different rule to rare-reference books.',
+              technical:
+                'A state key often combines dimensions such as tenant:user:route. More dimensions improve control but create more counters and higher-cardinality storage.',
+              remember: 'A good rule is shaped like: identity + operation + amount + period.',
+            },
+            {
+              title: 'Admission control versus traffic shaping',
+              plain:
+                'An admission limiter makes an immediate yes/no decision. A traffic shaper may place work in a queue and release it at a controlled speed.',
+              analogy:
+                'A nightclub bouncer rejects people when full; an airport security line keeps accepted people waiting and processes them steadily.',
+              technical:
+                'Queueing changes latency and API semantics. It is safe mainly for asynchronous, idempotent, deadline-aware work—not every synchronous HTTP request.',
+              remember: 'Rejecting protects latency; queueing smooths work but makes callers wait.',
+            },
+            {
+              title: 'Every algorithm stores a compressed history',
+              plain:
+                'The limiter needs enough memory of the past to decide whether the next request is allowed. Different algorithms remember different amounts.',
+              analogy:
+                'A fixed counter remembers only a total, while a sliding log keeps every receipt. More detailed receipts answer more precise questions but occupy more space.',
+              technical:
+                'Fixed and sliding counters use constant-size state. Exact logs use state proportional to accepted traffic. Token buckets summarize history as a token balance.',
+              remember: 'Accuracy, memory, and computation form a trade-off—you rarely maximize all three.',
+            },
+            {
+              title: 'Time and boundaries are part of correctness',
+              plain:
+                'The system must define which window owns a boundary timestamp and whether a request exactly one period old still counts.',
+              analogy:
+                'A train ticket valid “until 10:00” is ambiguous unless the railway says whether 10:00:00 is inside or outside the valid period.',
+              technical:
+                'Use trusted server time, define intervals such as (now − W, now], and make expiration, counting, and insertion atomic to avoid off-by-one behavior.',
+              remember: 'Write the interval with brackets before simulating a timeline.',
+            },
+            {
+              title: 'Placement changes trust and latency',
+              plain:
+                'Client-side limits are easy to bypass. Server middleware gives control, while an API gateway can reject traffic before it reaches application servers.',
+              analogy:
+                'A sign asking visitors to count themselves is weaker than a receptionist; a gate at the property entrance protects more of the building.',
+              technical:
+                'Gateways may combine TLS termination, authentication, routing, allowlists, and limits. Application-level limits still cannot stop upstream bandwidth exhaustion.',
+              remember: 'Enforce important limits in infrastructure you control, as early as practical.',
+            },
+            {
+              title: 'Distributed limits trade strictness for availability',
+              plain:
+                'If several regions count independently, they can temporarily allow more than the global quota. If every request coordinates globally, the answer becomes slower and may fail during a network partition.',
+              analogy:
+                'Two shop branches sharing one gift-card balance can call headquarters for every purchase or work from delayed copies. One is slower; the other can briefly overspend.',
+              technical:
+                'Shared Redis, consistent ownership, leased regional token allocations, and hierarchical quotas make different latency, consistency, and failure trade-offs.',
+              remember: 'There is no free global counter: strictness requires coordination.',
+            },
+            {
+              title: 'Fairness and recovery matter to real users',
+              plain:
+                'A technically correct counter can still be unfair. Many people may share one IP, retries may synchronize, and one expensive request may cost far more than another.',
+              analogy:
+                'Charging every table in a restaurant by number of orders is unfair if one order is a coffee and another is a banquet.',
+              technical:
+                'Consider weighted request costs, tenant isolation, Retry-After, exponential backoff with jitter, idempotency, and separate abuse controls.',
+              remember: 'A useful limiter protects the system without surprising well-behaved clients.',
+            },
+          ]}
+        />
       </section>
 
       <section className="module-section module-tint" id="rate-algorithms">
